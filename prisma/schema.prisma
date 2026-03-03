@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  owner
+  manager
+  staff
+}
+
+enum TaskStatus {
+  open
+  in_progress
+  blocked
+  completed
+  archived
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum GoalStatus {
+  active
+  paused
+  completed
+  cancelled
+}
+
+enum ActivityEntityType {
+  task
+  task_comment
+  goal
+  goal_update
+  note
+}
+
+enum ActivityActionType {
+  task_created
+  task_updated
+  task_assigned
+  task_completed
+  task_reopened
+  comment_added
+  goal_created
+  goal_updated
+  goal_status_changed
+  note_created
+  note_updated
+}
+
+model User {
+  id              String          @id @default(uuid()) @db.Uuid
+  authProvider    String          @default("clerk") @map("auth_provider")
+  authSubject     String          @unique @map("auth_subject")
+  email           String          @unique
+  displayName     String          @map("display_name")
+  role            UserRole        @default(owner)
+  isActive        Boolean         @default(true) @map("is_active")
+  lastSeenAt      DateTime?       @map("last_seen_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdTasks    Task[]          @relation("TaskCreatedBy")
+  assignedTasks   Task[]          @relation("TaskAssignedTo")
+  taskComments    TaskComment[]
+  ownedGoals      Goal[]          @relation("GoalOwner")
+  goalUpdates     GoalUpdate[]
+  notes           Note[]          @relation("NoteCreatedBy")
+  activityEntries ActivityEntry[]
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Task {
+  id               String        @id @default(uuid()) @db.Uuid
+  title            String
+  description      String?
+  status           TaskStatus    @default(open)
+  priority         TaskPriority  @default(medium)
+  dueDate          DateTime?     @map("due_date") @db.Date
+  createdByUserId  String        @map("created_by_user_id") @db.Uuid
+  assignedToUserId String?       @map("assigned_to_user_id") @db.Uuid
+  completedAt      DateTime?     @map("completed_at") @db.Timestamptz(6)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdByUser    User          @relation("TaskCreatedBy", fields: [createdByUserId], references: [id])
+  assignedToUser   User?         @relation("TaskAssignedTo", fields: [assignedToUserId], references: [id])
+  comments         TaskComment[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([createdByUserId])
+  @@index([assignedToUserId])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id           String   @id @default(uuid()) @db.Uuid
+  taskId       String   @map("task_id") @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorUser   User     @relation(fields: [authorUserId], references: [id])
+
+  @@index([taskId])
+  @@index([authorUserId])
+  @@index([createdAt])
+  @@map("task_comments")
+}
+
+model Goal {
+  id           String       @id @default(uuid()) @db.Uuid
+  title        String
+  description  String?
+  status       GoalStatus   @default(active)
+  targetMetric String?      @map("target_metric")
+  targetValue  Decimal?     @map("target_value") @db.Decimal(14, 2)
+  targetDate   DateTime?    @map("target_date") @db.Date
+  ownerUserId  String       @map("owner_user_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  ownerUser    User         @relation("GoalOwner", fields: [ownerUserId], references: [id])
+  updates      GoalUpdate[]
+
+  @@index([status])
+  @@index([targetDate])
+  @@index([ownerUserId])
+  @@map("goals")
+}
+
+model GoalUpdate {
+  id           String   @id @default(uuid()) @db.Uuid
+  goalId       String   @map("goal_id") @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  summary      String
+  metricValue  Decimal? @map("metric_value") @db.Decimal(14, 2)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  goal         Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  authorUser   User     @relation(fields: [authorUserId], references: [id])
+
+  @@index([goalId])
+  @@index([authorUserId])
+  @@index([createdAt])
+  @@map("goal_updates")
+}
+
+model Note {
+  id              String   @id @default(uuid()) @db.Uuid
+  title           String
+  body            String
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  visibilityScope String   @default("owners") @map("visibility_scope")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdByUser   User     @relation("NoteCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([createdByUserId])
+  @@index([visibilityScope])
+  @@map("notes")
+}
+
+model ActivityEntry {
+  id           String             @id @default(uuid()) @db.Uuid
+  actorUserId  String             @map("actor_user_id") @db.Uuid
+  entityType   ActivityEntityType @map("entity_type")
+  entityId     String             @map("entity_id") @db.Uuid
+  actionType   ActivityActionType @map("action_type")
+  summary      String
+  metadataJson Json               @default("{}") @map("metadata_json")
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  actorUser    User               @relation(fields: [actorUserId], references: [id])
+
+  @@index([actorUserId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([actionType])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_entries")
+}
