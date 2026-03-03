@@ -144,13 +144,13 @@ export function AppTopBar({
   }, [menuOpen]);
 
   return (
-    <div className="sticky top-0 z-20 pb-4 pt-2">
-      <div className="launch-bar gap-2 px-3 sm:gap-3">
+    <div className="sticky top-0 z-20 pb-3 pt-2">
+      <div className="launch-bar gap-1.5 px-2 py-2 sm:gap-3 sm:px-3 sm:py-3">
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenuOpen((current) => !current)}
-            className="launch-chip h-11 w-11"
+            className="launch-chip h-10 w-10 sm:h-11 sm:w-11"
             aria-label="Open navigation"
             aria-expanded={menuOpen}
           >
@@ -183,18 +183,18 @@ export function AppTopBar({
 
         <Link
           href={previousRoute.href}
-          className="launch-chip h-11 w-11"
+          className="launch-chip h-10 w-10 sm:h-11 sm:w-11"
           aria-label={`Go to ${previousRoute.label}`}
         >
           <ArrowLeftIcon />
         </Link>
 
-        <div className="min-w-0 flex-1 text-center">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-[var(--ink-muted)]">
+        <div className="min-w-0 flex-1 px-1 text-center">
+          <p className="truncate whitespace-nowrap text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[var(--ink-muted)] sm:text-[0.72rem] sm:tracking-[0.28em]">
             {currentRoute.label}
           </p>
           {showDetail ? (
-            <p className="mt-1 truncate text-sm font-medium text-[var(--ink-soft)]">
+            <p className="mt-0.5 hidden truncate text-xs font-medium text-[var(--ink-soft)] sm:block sm:text-sm">
               {detailText}
             </p>
           ) : null}
@@ -202,7 +202,7 @@ export function AppTopBar({
 
         <Link
           href={nextRoute.href}
-          className="launch-chip h-11 w-11"
+          className="launch-chip h-10 w-10 sm:h-11 sm:w-11"
           aria-label={`Go to ${nextRoute.label}`}
         >
           <ArrowRightIcon />
@@ -213,7 +213,7 @@ export function AppTopBar({
         <Link
           href="/inbox"
           aria-label="Inbox"
-          className="launch-chip relative h-11 w-11"
+          className="launch-chip relative h-10 w-10 sm:h-11 sm:w-11"
         >
           <InboxIcon />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--accent)]" />
@@ -222,7 +222,7 @@ export function AppTopBar({
         <Link
           href="/account"
           aria-label="Open account"
-          className="inline-flex h-11 max-w-[9.5rem] items-center rounded-full border border-[rgba(82,59,40,0.08)] bg-white/70 px-3 text-sm font-semibold text-[var(--ink)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)]"
+          className="inline-flex h-10 max-w-[6.5rem] items-center rounded-full border border-[rgba(82,59,40,0.08)] bg-white/70 px-2.5 text-sm font-semibold text-[var(--ink)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)] sm:h-11 sm:max-w-[9.5rem] sm:px-3"
         >
           <UserNameDisplay className="truncate" />
         </Link>

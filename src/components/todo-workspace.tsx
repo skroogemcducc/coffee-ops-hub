@@ -330,8 +330,8 @@ function TaskRow({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-[24px]">
-      <div className="absolute inset-0 flex items-center justify-end rounded-[24px] bg-[rgba(47,118,102,0.12)] px-5">
+    <div className="relative overflow-hidden rounded-[18px] sm:rounded-[20px]">
+      <div className="absolute inset-0 flex items-center justify-end rounded-[18px] bg-[rgba(47,118,102,0.12)] px-4 sm:rounded-[20px]">
         <span className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-[var(--accent-strong)]">
           {isDone ? "reopen" : "done"}
         </span>
@@ -363,7 +363,7 @@ function TaskRow({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         style={rowStyle}
-        className={`relative z-10 flex items-center gap-3 rounded-[24px] border border-[var(--panel-line)] bg-[var(--panel-strong)] px-3 py-3 shadow-[0_10px_22px_rgba(101,73,47,0.06)] ${
+        className={`relative z-10 flex items-start gap-2 rounded-[18px] border border-[var(--panel-line)] bg-[var(--panel-strong)] px-2.5 py-2.5 shadow-[0_6px_16px_rgba(101,73,47,0.04)] sm:gap-3 sm:rounded-[20px] sm:px-3 sm:py-3 ${
           isDone ? "opacity-75" : ""
         }`}
       >
@@ -371,7 +371,7 @@ function TaskRow({
           type="button"
           data-block-swipe="true"
           onClick={triggerToggle}
-          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border transition ${
+          className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border transition sm:h-10 sm:w-10 sm:rounded-[16px] ${
             isDone
               ? "border-[rgba(47,118,102,0.12)] bg-[rgba(47,118,102,0.12)] text-[var(--accent-strong)]"
               : "border-[rgba(47,118,102,0.16)] bg-[rgba(47,118,102,0.08)] text-[var(--accent-strong)] hover:border-[rgba(47,118,102,0.24)] hover:bg-[rgba(47,118,102,0.14)]"
@@ -388,77 +388,80 @@ function TaskRow({
         <button
           type="button"
           onClick={handleOpen}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className="min-w-0 flex-1 text-left"
         >
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] border border-[rgba(82,59,40,0.08)] bg-white/65 text-[var(--ink-soft)]">
+          <span className="flex min-w-0 items-start gap-2">
+            <span
+              className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClass(task.status)}`}
+            />
+
+            <span className="min-w-0 flex-1">
+              <span className="flex items-start gap-2">
+                <span
+                  className={`min-w-0 flex-1 whitespace-normal break-words text-[0.98rem] font-semibold leading-5 text-[var(--ink)] sm:text-base ${
+                    isDone ? "line-through decoration-[1.5px]" : ""
+                  }`}
+                >
+                  {task.title}
+                </span>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] sm:px-2.5 sm:py-1 sm:text-[0.68rem] ${getPriorityClass(task.priority)}`}
+                >
+                  {task.priority}
+                </span>
+              </span>
+
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] font-medium text-[var(--ink-muted)] sm:text-[0.76rem]">
+                <span>{getStatusLabel(task.status)}</span>
+                {task.dueDate ? (
+                  <span className="rounded-full bg-[rgba(82,59,40,0.04)] px-2 py-0.5">
+                    {task.dueDate}
+                  </span>
+                ) : null}
+                {task.tags?.slice(0, 2).map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-[rgba(47,118,102,0.08)] px-2 py-0.5 text-[var(--accent-strong)]"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </span>
+
+              {task.notes ? (
+                <span className="mt-1 block truncate text-[0.78rem] leading-5 text-[var(--ink-muted)] sm:text-sm">
+                  {task.notes}
+                </span>
+              ) : null}
+            </span>
+          </span>
+        </button>
+
+        <div className="flex shrink-0 items-start gap-1">
+          <span className="hidden h-8 w-8 items-center justify-center rounded-[12px] border border-[rgba(82,59,40,0.06)] bg-white/55 text-[var(--ink-muted)] sm:inline-flex">
             <GripIcon />
           </span>
 
-          <span className="min-w-0 flex-1">
-            <span className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex h-2.5 w-2.5 rounded-full ${getStatusDotClass(task.status)}`}
-              />
-              <span
-                className={`truncate text-base font-semibold text-[var(--ink)] ${
-                  isDone ? "line-through decoration-[1.5px]" : ""
-                }`}
-              >
-                {task.title}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14em] ${getPriorityClass(task.priority)}`}
-              >
-                {task.priority}
-              </span>
-            </span>
+          <button
+            type="button"
+            data-block-swipe="true"
+            onClick={() => onOpen(task.id)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-[rgba(82,59,40,0.08)] bg-white/65 text-[var(--ink-soft)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)] sm:h-9 sm:w-9"
+            aria-label={`Edit ${task.title}`}
+          >
+            <EditIcon />
+          </button>
 
-            <span className="mt-1 block text-sm text-[var(--ink-muted)]">
-              {task.notes ?? "Tap to add notes"}
-            </span>
-
-            <span className="mt-2 flex flex-wrap items-center gap-2 text-[0.72rem] font-medium text-[var(--ink-muted)]">
-              {task.dueDate ? (
-                <span className="rounded-full bg-[rgba(82,59,40,0.05)] px-2.5 py-1">
-                  {task.dueDate}
-                </span>
-              ) : (
-                <span className="rounded-full bg-[rgba(82,59,40,0.04)] px-2.5 py-1">
-                  No due date
-                </span>
-              )}
-              <span>{getStatusLabel(task.status)}</span>
-              {task.tags?.slice(0, 2).map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-[rgba(47,118,102,0.08)] px-2.5 py-1 text-[var(--accent-strong)]"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </span>
-          </span>
-        </button>
-
-        <button
-          type="button"
-          data-block-swipe="true"
-          onClick={() => onOpen(task.id)}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[16px] border border-[rgba(82,59,40,0.08)] bg-white/65 text-[var(--ink-soft)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)]"
-          aria-label={`Edit ${task.title}`}
-        >
-          <EditIcon />
-        </button>
-
-        <button
-          type="button"
-          data-block-swipe="true"
-          onClick={() => onDelete(task.id)}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[16px] border border-[rgba(82,59,40,0.08)] bg-white/65 text-[var(--ink-soft)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)]"
-          aria-label={`Delete ${task.title}`}
-        >
-          <TrashIcon />
-        </button>
+          <button
+            type="button"
+            data-block-swipe="true"
+            onClick={() => onDelete(task.id)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-[rgba(82,59,40,0.08)] bg-white/65 text-[var(--ink-soft)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)] sm:h-9 sm:w-9"
+            aria-label={`Delete ${task.title}`}
+          >
+            <TrashIcon />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -813,24 +816,25 @@ export function TodoWorkspace({
         />
 
         <section className="space-y-4">
-          <div className="rounded-[28px] border border-[var(--panel-line)] bg-[var(--panel-strong)] p-4 shadow-[0_12px_24px_rgba(101,73,47,0.06)]">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="rounded-[22px] border border-[var(--panel-line)] bg-[var(--panel-strong)] px-3 py-3 shadow-[0_8px_18px_rgba(101,73,47,0.05)] sm:rounded-[28px] sm:p-4">
+            <div className="flex items-center gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-[var(--ink-muted)]">
                   Progress
                 </p>
-                <p className="mt-2 text-2xl font-semibold text-[var(--ink)]">
-                  {doneTasks}/{totalTasks} done
-                </p>
-                <p className="mt-1 text-sm text-[var(--panel-muted)]">
-                  {progressPercent}% complete
+                <p className="mt-1 text-sm font-semibold text-[var(--ink)] sm:mt-2 sm:text-2xl">
+                  {doneTasks}/{totalTasks} complete
                 </p>
               </div>
 
-              <div className="w-full max-w-[320px]">
-                <div className="h-3 rounded-full bg-[rgba(82,59,40,0.06)]">
+              <div className="min-w-0 flex-1 sm:max-w-[320px]">
+                <div className="flex items-center justify-between text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--panel-muted)]">
+                  <span>{progressPercent}%</span>
+                  <span>{totalTasks} total</span>
+                </div>
+                <div className="mt-1.5 h-2 rounded-full bg-[rgba(82,59,40,0.06)] sm:mt-2 sm:h-3">
                   <div
-                    className="h-3 rounded-full bg-[var(--accent)] transition-all duration-200"
+                    className="h-2 rounded-full bg-[var(--accent)] transition-all duration-200 sm:h-3"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -852,7 +856,7 @@ export function TodoWorkspace({
                       setActiveListId(list.id);
                       setFilter("all");
                     }}
-                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    className={`rounded-full border px-3 py-1.5 text-[0.82rem] font-semibold transition sm:px-4 sm:py-2 sm:text-sm ${
                       selected
                         ? "border-[rgba(191,95,44,0.18)] bg-[rgba(191,95,44,0.12)] text-[var(--accent)]"
                         : "border-[rgba(82,59,40,0.08)] bg-white/65 text-[var(--ink-soft)]"
@@ -889,7 +893,7 @@ export function TodoWorkspace({
                 <button
                   type="button"
                   onClick={() => setCreatingList(true)}
-                  className="rounded-full border border-dashed border-[rgba(82,59,40,0.14)] px-4 py-2 text-sm font-semibold text-[var(--ink-soft)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)]"
+                  className="rounded-full border border-dashed border-[rgba(82,59,40,0.14)] px-3 py-1.5 text-[0.82rem] font-semibold text-[var(--ink-soft)] transition hover:border-[rgba(191,95,44,0.18)] hover:text-[var(--accent)] sm:px-4 sm:py-2 sm:text-sm"
                 >
                   New List
                 </button>
@@ -909,7 +913,7 @@ export function TodoWorkspace({
                       key={value}
                       type="button"
                       onClick={() => setFilter(value)}
-                      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                      className={`rounded-full border px-3 py-1.5 text-[0.82rem] font-semibold transition sm:px-4 sm:py-2 sm:text-sm ${
                         active
                           ? "border-[rgba(47,118,102,0.18)] bg-[rgba(47,118,102,0.1)] text-[var(--accent-strong)]"
                           : "border-[rgba(82,59,40,0.08)] bg-white/65 text-[var(--ink-soft)]"
@@ -937,14 +941,14 @@ export function TodoWorkspace({
               return (
                 <div
                   key={group.phase}
-                  className="rounded-[28px] border border-[var(--panel-line)] bg-[var(--panel-strong)] p-4 shadow-[0_10px_20px_rgba(101,73,47,0.05)]"
+                  className="rounded-[22px] border border-[var(--panel-line)] bg-[var(--panel-strong)] p-3 shadow-[0_8px_18px_rgba(101,73,47,0.05)] sm:rounded-[28px] sm:p-4"
                 >
-                  <div className="flex flex-col gap-3 border-b border-[var(--line-soft)] pb-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="flex flex-col gap-2 border-b border-[var(--line-soft)] pb-3 sm:flex-row sm:items-end sm:justify-between sm:gap-3 sm:pb-4">
                     <div>
                       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-[var(--ink-muted)]">
                         Phase
                       </p>
-                      <h2 className="mt-2 text-xl font-semibold text-[var(--ink)]">
+                      <h2 className="mt-1 text-lg font-semibold text-[var(--ink)] sm:mt-2 sm:text-xl">
                         {group.phase}
                       </h2>
                     </div>
@@ -965,7 +969,7 @@ export function TodoWorkspace({
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
                     {group.tasks.map((task) => (
                       <TaskRow
                         key={task.id}
