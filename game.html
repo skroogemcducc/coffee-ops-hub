@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Coffee Catcher</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a0a00;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas {
+    display: block;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(139, 90, 43, 0.4);
+  }
+  #ui-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #start-screen, #game-over-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    text-align: center;
+    color: #f5deb3;
+  }
+  #start-screen h1 {
+    font-size: 2.2em;
+    margin-bottom: 0.2em;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  }
+  #start-screen p, #game-over-screen p {
+    font-size: 1.1em;
+    margin-bottom: 1em;
+    opacity: 0.8;
+  }
+  .btn {
+    background: linear-gradient(135deg, #8B5A2B, #A0522D);
+    color: #fff;
+    border: none;
+    padding: 16px 48px;
+    font-size: 1.3em;
+    border-radius: 50px;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+  }
+  .btn:active { transform: scale(0.95); }
+  #game-over-screen { display: none; }
+  #game-over-screen h2 { font-size: 2em; margin-bottom: 0.1em; color: #f5deb3; }
+  #game-over-screen .score-display { font-size: 1.6em; color: #ffd700; margin-bottom: 0.5em; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="ui-overlay">
+  <div id="start-screen">
+    <h1>Coffee Catcher</h1>
+    <p>Catch cups, dodge bad beans!</p>
+    <p style="font-size:0.85em; opacity:0.6;">Swipe or tilt to move</p>
+    <button class="btn" id="start-btn">Play</button>
+  </div>
+  <div id="game-over-screen">
+    <h2>Game Over</h2>
+    <div class="score-display" id="final-score">0</div>
+    <p id="high-score-msg"></p>
+    <button class="btn" id="restart-btn">Play Again</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const finalScoreEl = document.getElementById('final-score');
+const highScoreMsg = document.getElementById('high-score-msg');
+
+let W, H, dpr;
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.min(window.innerWidth, 480);
+  H = Math.min(window.innerHeight, 800);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Game state
+let player, items, particles, score, lives, gameRunning, spawnTimer, difficulty, combo, shakeTime;
+let highScore = parseInt(localStorage.getItem('coffeeCatcherHigh') || '0');
+let animFrame;
+
+const PLAYER_W = 50, PLAYER_H = 30;
+
+function initGame() {
+  player = { x: W / 2, y: H - 70, w: PLAYER_W, h: PLAYER_H, targetX: W / 2 };
+  items = [];
+  particles = [];
+  score = 0;
+  lives = 3;
+  combo = 0;
+  spawnTimer = 0;
+  difficulty = 1;
+  shakeTime = 0;
+  gameRunning = true;
+}
+
+// Drawing helpers
+function drawCup(x, y, size) {
+  const s = size;
+  // Cup body
+  ctx.fillStyle = '#f5f5f0';
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.4, y - s * 0.5);
+  ctx.lineTo(x + s * 0.4, y - s * 0.5);
+  ctx.lineTo(x + s * 0.3, y + s * 0.5);
+  ctx.lineTo(x - s * 0.3, y + s * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  // Coffee inside
+  ctx.fillStyle = '#6F4E37';
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.35, y - s * 0.3);
+  ctx.lineTo(x + s * 0.35, y - s * 0.3);
+  ctx.lineTo(x + s * 0.3, y + s * 0.5);
+  ctx.lineTo(x - s * 0.3, y + s * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  // Lid
+  ctx.fillStyle = '#8B5A2B';
+  ctx.fillRect(x - s * 0.45, y - s * 0.6, s * 0.9, s * 0.15);
+  // Steam
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1.5;
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    const sx = x + i * s * 0.15;
+    const t = Date.now() / 500 + i;
+    ctx.moveTo(sx, y - s * 0.65);
+    ctx.quadraticCurveTo(sx + Math.sin(t) * 4, y - s * 0.85, sx + Math.sin(t + 1) * 3, y - s * 1.0);
+    ctx.stroke();
+  }
+}
+
+function drawBean(x, y, size, bad) {
+  ctx.fillStyle = bad ? '#4a2' : '#8B4513';
+  if (bad) ctx.fillStyle = '#556B2F';
+  ctx.beginPath();
+  ctx.ellipse(x, y, size * 0.35, size * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Line down middle
+  ctx.strokeStyle = bad ? '#3a5a1a' : '#5C3317';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y - size * 0.35);
+  ctx.quadraticCurveTo(x + size * 0.1, y, x, y + size * 0.35);
+  ctx.stroke();
+  // Stink lines for bad beans
+  if (bad) {
+    ctx.strokeStyle = 'rgba(100, 140, 50, 0.5)';
+    ctx.lineWidth = 1;
+    for (let i = -1; i <= 1; i++) {
+      const t = Date.now() / 400 + i;
+      ctx.beginPath();
+      ctx.moveTo(x + i * size * 0.3, y - size * 0.5);
+      ctx.lineTo(x + i * size * 0.3 + Math.sin(t) * 3, y - size * 0.9);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawStar(x, y, size) {
+  ctx.fillStyle = '#FFD700';
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+    const r = i === 0 ? size * 0.5 : size * 0.5;
+    ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    const a2 = a + (2 * Math.PI) / 10;
+    ctx.lineTo(x + Math.cos(a2) * size * 0.2, y + Math.sin(a2) * size * 0.2);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#FFA500';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawPlayer(p) {
+  // Mug body
+  const mx = p.x, my = p.y;
+  ctx.fillStyle = '#DEB887';
+  ctx.beginPath();
+  ctx.moveTo(mx - 25, my - 15);
+  ctx.lineTo(mx + 25, my - 15);
+  ctx.lineTo(mx + 20, my + 15);
+  ctx.lineTo(mx - 20, my + 15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#8B5A2B';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Handle
+  ctx.beginPath();
+  ctx.arc(mx + 28, my, 8, -Math.PI * 0.5, Math.PI * 0.5);
+  ctx.stroke();
+  // Face
+  ctx.fillStyle = '#5C3317';
+  ctx.beginPath();
+  ctx.arc(mx - 8, my - 3, 2, 0, Math.PI * 2);
+  ctx.arc(mx + 8, my - 3, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(mx, my + 5, 5, 0, Math.PI);
+  ctx.stroke();
+}
+
+function spawnItem() {
+  const r = Math.random();
+  let type;
+  if (r < 0.15) type = 'star';
+  else if (r < 0.35 + difficulty * 0.03) type = 'bad';
+  else type = 'cup';
+
+  items.push({
+    x: 30 + Math.random() * (W - 60),
+    y: -30,
+    size: 28 + Math.random() * 8,
+    speed: 1.5 + Math.random() * 1.5 + difficulty * 0.3,
+    type,
+    wobble: Math.random() * Math.PI * 2,
+    wobbleSpeed: 0.02 + Math.random() * 0.02
+  });
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.02,
+      color,
+      size: 2 + Math.random() * 4
+    });
+  }
+}
+
+function update() {
+  if (!gameRunning) return;
+
+  difficulty = 1 + score / 50;
+  spawnTimer++;
+  const spawnRate = Math.max(20, 60 - difficulty * 3);
+  if (spawnTimer >= spawnRate) {
+    spawnItem();
+    spawnTimer = 0;
+  }
+
+  // Player movement (smooth lerp)
+  player.x += (player.targetX - player.x) * 0.15;
+  player.x = Math.max(25, Math.min(W - 25, player.x));
+
+  // Update items
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    item.y += item.speed;
+    item.wobble += item.wobbleSpeed;
+    item.x += Math.sin(item.wobble) * 0.5;
+
+    // Check collision with player
+    const dx = item.x - player.x;
+    const dy = item.y - player.y;
+    if (Math.abs(dx) < 30 && Math.abs(dy) < 25) {
+      if (item.type === 'cup') {
+        combo++;
+        const pts = combo >= 5 ? 3 : combo >= 3 ? 2 : 1;
+        score += pts;
+        spawnParticles(item.x, item.y, '#DEB887', 8);
+        if (pts > 1) spawnParticles(item.x, item.y, '#FFD700', 5);
+      } else if (item.type === 'star') {
+        score += 5;
+        combo += 2;
+        spawnParticles(item.x, item.y, '#FFD700', 15);
+      } else {
+        lives--;
+        combo = 0;
+        shakeTime = 10;
+        spawnParticles(item.x, item.y, '#556B2F', 10);
+        if (lives <= 0) {
+          endGame();
+          return;
+        }
+      }
+      items.splice(i, 1);
+      continue;
+    }
+
+    // Missed item
+    if (item.y > H + 30) {
+      if (item.type === 'cup') { combo = 0; }
+      items.splice(i, 1);
+    }
+  }
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  if (shakeTime > 0) shakeTime--;
+}
+
+function draw() {
+  ctx.save();
+
+  // Screen shake
+  if (shakeTime > 0) {
+    ctx.translate(
+      (Math.random() - 0.5) * shakeTime * 1.5,
+      (Math.random() - 0.5) * shakeTime * 1.5
+    );
+  }
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#2C1810');
+  grad.addColorStop(1, '#1a0a00');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Background beans (decorative)
+  ctx.globalAlpha = 0.05;
+  for (let i = 0; i < 8; i++) {
+    const bx = (i * 73 + 20) % W;
+    const by = (i * 97 + Date.now() / 50) % (H + 40) - 20;
+    drawBean(bx, by, 40, false);
+  }
+  ctx.globalAlpha = 1;
+
+  // Items
+  items.forEach(item => {
+    if (item.type === 'cup') drawCup(item.x, item.y, item.size);
+    else if (item.type === 'star') drawStar(item.x, item.y, item.size);
+    else drawBean(item.x, item.y, item.size, true);
+  });
+
+  // Particles
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // Player
+  drawPlayer(player);
+
+  // HUD
+  ctx.fillStyle = '#f5deb3';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Score: ${score}`, 15, 35);
+
+  // Combo
+  if (combo >= 3) {
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(`x${combo} combo!`, 15, 58);
+  }
+
+  // Lives (hearts)
+  ctx.textAlign = 'right';
+  ctx.font = '20px sans-serif';
+  let heartStr = '';
+  for (let i = 0; i < 3; i++) heartStr += i < lives ? '❤️' : '🖤';
+  ctx.fillText(heartStr, W - 15, 35);
+
+  ctx.restore();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  if (gameRunning) animFrame = requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+  gameRunning = false;
+  const isHigh = score > highScore;
+  if (isHigh) {
+    highScore = score;
+    localStorage.setItem('coffeeCatcherHigh', String(highScore));
+  }
+  finalScoreEl.textContent = `Score: ${score}`;
+  highScoreMsg.textContent = isHigh ? `New High Score!` : `Best: ${highScore}`;
+  gameOverScreen.style.display = 'flex';
+}
+
+function startGame() {
+  startScreen.classList.add('hidden');
+  gameOverScreen.style.display = 'none';
+  initGame();
+  gameLoop();
+}
+
+// Touch controls
+let touchStartX = null;
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  touchStartX = touch.clientX;
+  player.targetX = touch.clientX - rect.left;
+});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  player.targetX = touch.clientX - rect.left;
+});
+
+// Mouse controls (for testing on desktop)
+canvas.addEventListener('mousemove', e => {
+  if (!gameRunning) return;
+  const rect = canvas.getBoundingClientRect();
+  player.targetX = e.clientX - rect.left;
+});
+
+// Gyroscope controls
+if (window.DeviceOrientationEvent) {
+  window.addEventListener('deviceorientation', e => {
+    if (!gameRunning || e.gamma === null) return;
+    const tilt = e.gamma; // -90 to 90
+    player.targetX = W / 2 + (tilt / 40) * (W / 2);
+  });
+}
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('restart-btn').addEventListener('click', startGame);
+
+// Draw initial background
+draw();
+</script>
+</body>
+</html>
